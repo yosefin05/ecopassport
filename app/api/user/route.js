@@ -9,7 +9,7 @@ export async function GET(request) {
     // 2. Query Data Profil Pengguna dari tabel 'users'
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('id, name, green_points, created_at')
+      .select('id, name, green_points, created_a t')
       .eq('name', userName)
       .single();
 
