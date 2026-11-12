@@ -84,7 +84,6 @@ export async function POST(request) {
           user_name: userName,
           score: aiResult.score,
           carbon_saved: aiResult.carbon_saved,
-          action_title: aiResult.action_title,
         },
       ])
       .select();
