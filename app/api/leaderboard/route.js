@@ -1,44 +1,42 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
+import { logServerError } from '@/lib/server-errors';
 
 export async function GET() {
   try {
-    // 1. Ambil 10 pengguna dengan green_points tertinggi dari tabel 'users'
-    const { data: leaderboardData, error } = await supabase
+    const { data: users, error } = await getSupabaseAdmin()
       .from('users')
       .select('id, name, green_points, created_at')
-      .order('green_points', { ascending: false }) // Urutkan dari poin tertinggi ke terendah
-      .limit(10); // Ambil Top 10 saja
+      .order('green_points', { ascending: false })
+      .order('created_at', { ascending: true })
+      .limit(10);
 
-    // 2. Penanganan jika ada error saat query ke Supabase
     if (error) {
-      console.error('Database Error (Leaderboard):', error);
+      logServerError('[api/leaderboard] User query failed', error);
       return NextResponse.json(
-        { success: false, message: 'Gagal mengambil data papan peringkat dari Supabase.' },
+        { success: false, message: 'Gagal mengambil data papan peringkat.' },
         { status: 500 }
       );
     }
 
-    // 3. Tambahkan peringkat (rank 1, 2, 3...) secara dinamis ke dalam data
-    const formattedLeaderboard = leaderboardData.map((user, index) => ({
+    const data = users.map((user, index) => ({
       rank: index + 1,
       id: user.id,
       name: user.name,
-      green_points: user.green_points || 0,
+      green_points: user.green_points ?? 0,
     }));
 
-    // 4. Balikkan respon JSON sukses ke Frontend
     return NextResponse.json({
       success: true,
-      total_users: formattedLeaderboard.length,
-      data: formattedLeaderboard,
+      total_users: data.length,
+      data,
     });
-
   } catch (error) {
-    console.error('Error Processing Leaderboard API:', error);
+    logServerError('[api/leaderboard] Request processing failed', error);
+    const isConfigurationError = error instanceof Error && error.message.includes('must be configured');
     return NextResponse.json(
-      { success: false, message: 'Terjadi kesalahan pada server API backend.', error: error.message },
-      { status: 500 }
+      { success: false, message: isConfigurationError ? 'Backend Supabase belum dikonfigurasi.' : 'Terjadi kesalahan pada server.' },
+      { status: isConfigurationError ? 503 : 500 }
     );
   }
 }

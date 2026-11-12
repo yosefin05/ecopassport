@@ -1,58 +1,64 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
+import { logServerError } from '@/lib/server-errors';
+
 export async function GET(request) {
   try {
-    // 1. Ambil nama user dari Query Parameter URL (contoh: /api/user?name=Viska)
     const { searchParams } = new URL(request.url);
-    const userName = searchParams.get('name') || 'Viska';
+    const userName = (searchParams.get('name') || 'Viska').trim();
+    if (!userName || userName.length > 24) {
+      return NextResponse.json(
+        { success: false, message: 'Nama pengguna wajib diisi dan maksimal 24 karakter.' },
+        { status: 400 }
+      );
+    }
 
-    // 2. Query Data Profil Pengguna dari tabel 'users'
+    const supabase = getSupabaseAdmin();
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('green_points')
+      .select('name, green_points')
       .eq('name', userName)
-      .single();
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
 
-    if (userError && userError.code !== 'PGRST116') {
-      // PGRST116 adalah kode jika data tidak ditemukan
-      console.error('Database Error (users):', userError);
+    if (userError) {
+      logServerError('[api/user] User query failed', userError);
       return NextResponse.json(
-        { success: false, message: 'Gagal mengambil data pengguna dari Supabase.' },
+        { success: false, message: 'Gagal mengambil data pengguna.' },
         { status: 500 }
       );
     }
 
-    // 3. Query Riwayat Aksi Pengguna dari tabel 'action_logs'
     const { data: userLogs, error: logsError } = await supabase
       .from('action_logs')
-      .select('id, action_title, score, carbon_saved, created_at')
+      .select('id, action_title, image_url, score, carbon_saved, created_at')
       .eq('user_name', userName)
-      .order('created_at', { ascending: false }); // Urutkan dari aksi terbaru
+      .order('created_at', { ascending: false });
 
     if (logsError) {
-      console.error('Database Error (action_logs):', logsError);
+      logServerError('[api/user] Action history query failed', logsError);
       return NextResponse.json(
-        { success: false, message: 'Gagal mengambil riwayat aksi dari Supabase.' },
+        { success: false, message: 'Gagal mengambil riwayat aksi pengguna.' },
         { status: 500 }
       );
     }
 
-    // 4. Balikkan Respon JSON Sukses ke Frontend (Viska)
     return NextResponse.json({
       success: true,
       user: {
-        name: userName,
-        green_points: userData ? userData.green_points : 0,
-        total_actions: userLogs ? userLogs.length : 0,
+        name: userData?.name || userName,
+        green_points: userData?.green_points ?? 0,
+        total_actions: userLogs.length,
       },
-      logs: userLogs || [],
+      logs: userLogs,
     });
-
   } catch (error) {
-    console.error('Error Processing User API:', error);
+    logServerError('[api/user] Request processing failed', error);
+    const isConfigurationError = error instanceof Error && error.message.includes('must be configured');
     return NextResponse.json(
-      { success: false, message: 'Terjadi kesalahan pada server API backend.', error: error.message },
-      { status: 500 }
+      { success: false, message: isConfigurationError ? 'Backend Supabase belum dikonfigurasi.' : 'Terjadi kesalahan pada server.' },
+      { status: isConfigurationError ? 503 : 500 }
     );
   }
 }

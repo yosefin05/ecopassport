@@ -20,6 +20,15 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Backend scan configuration
+
+Set `GEMINI_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`.
+The service-role key is server-only; do not rename it to a `NEXT_PUBLIC_` variable or expose it in client code.
+
+In the Supabase SQL Editor, run `supabase/migrations/20261112000000_record_eco_action.sql` manually.
+The migration creates the transaction-backed `record_eco_action` RPC; it is not applied automatically.
+Ensure the public Storage bucket `eco-actions` exists.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
