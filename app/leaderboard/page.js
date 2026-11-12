@@ -16,6 +16,7 @@ const PODIUM = [{ h: 'h-40', c: 'sun' }, { h: 'h-28', c: 'sky' }, { h: 'h-20', c
 export default function LeaderboardPage() {
   const { name } = useUser();
   const [board, setBoard] = useState(null);
+  const [podium, setPodium] = useState([]);
   const [me, setMe] = useState(null);
   const [err, setErr] = useState('');
   const [claim, setClaim] = useState(null);
@@ -25,7 +26,7 @@ export default function LeaderboardPage() {
     setSpin(true);
     try {
       const [b, u] = await Promise.all([getLeaderboard(), name ? getUser(name) : Promise.resolve(null)]);
-      if (b.success) { setBoard(b.data); setErr(''); } else setErr(b.message || 'Gagal memuat peringkat.');
+      if (b.success) { setBoard(b.data); setPodium(b.podium || []); setErr(''); } else setErr(b.message || 'Gagal memuat peringkat.');
       if (u?.success) setMe(u.user);
     } catch { setErr('Tidak bisa terhubung ke server.'); }
     setSpin(false);
@@ -37,9 +38,8 @@ export default function LeaderboardPage() {
     return () => clearInterval(t);
   }, [load]);
 
-  const top = board?.slice(0, 3) || [];
-  const rest = board?.slice(3) || [];
-  const order = [1, 0, 2]; // tampilan podium: peringkat 2, 1, 3
+  const podiumIds = new Set(podium.map((user) => user.id));
+  const rest = board?.filter((user) => !podiumIds.has(user.id)) || [];
   const leaderPts = board?.[0]?.green_points || 1;
   const myPoints = me?.green_points ?? board?.find((u) => u.name === name)?.green_points ?? 0;
   const inBoard = board?.some((u) => u.name === name);
@@ -69,25 +69,24 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      {top.length > 0 && (
+      {podium.length > 0 && (
         <section aria-label="Tiga teratas" className="relative mt-10 grid grid-cols-3 items-end gap-3">
           <Sparkle className="bob absolute -top-4 left-1/2 w-8" />
-          {order.map((k) => {
-            const u = top[k];
-            if (!u) return <div key={k} />;
+          {podium.map((u) => {
+            const podiumStyle = PODIUM[u.rank - 1];
             return (
               <div key={u.id} className="flex flex-col items-center text-center">
-                {k === 0 && <Crown className="bob mb-1 text-[var(--ink)]" size={30} fill="var(--sun)" />}
-                <Avatar name={u.name} size={k === 0 ? 68 : 54} />
+                {u.rank === 1 && <Crown className="bob mb-1 text-[var(--ink)]" size={30} fill="var(--sun)" />}
+                <Avatar name={u.name} size={u.rank === 1 ? 68 : 54} />
                 <p className="mt-2 w-full truncate font-extrabold">{u.name}</p>
                 <p className="text-sm font-extrabold text-[var(--muted)]">{u.green_points} poin</p>
-                <div className={`${PODIUM[k].h} c-${PODIUM[k].c} font-display mt-2 w-full rounded-t-2xl border-[2.5px] border-b-0 border-[var(--ink)] pt-2 text-4xl font-bold`}>{u.rank}</div>
+                <div className={`${podiumStyle.h} c-${podiumStyle.c} font-display mt-2 w-full rounded-t-2xl border-[2.5px] border-b-0 border-[var(--ink)] pt-2 text-4xl font-bold`}>{u.rank}</div>
               </div>
             );
           })}
         </section>
       )}
-      {top.length > 0 && <div className="h-1.5 rounded-full bg-[var(--ink)]" />}
+      {podium.length > 0 && <div className="h-1.5 rounded-full bg-[var(--ink)]" />}
 
       {rest.length > 0 && (
         <ol className="mt-5 space-y-3">

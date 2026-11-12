@@ -20,6 +20,7 @@ const TIPS = [
   ['Cahaya cukup, foto tidak buram', 'sun'],
   ['Satu aksi per foto', 'pink'],
 ];
+const DUPLICATE_PHOTO_MESSAGE = 'Foto ini sudah pernah digunakan untuk mencatat aktivitas. Gunakan foto aktivitas lain yang belum pernah dikirim.';
 
 export default function UploadPage() {
   const { name, setName } = useUser();
@@ -58,6 +59,7 @@ export default function UploadPage() {
       const small = await compressImage(file);
       const json = await scanImage(small, user);
       if (json.success) { setResult(json); setStatus('success'); }
+      else if (json.httpStatus === 409) { setError(DUPLICATE_PHOTO_MESSAGE); setStatus('idle'); }
       else if (json.is_valid === false) { setResult(json); setStatus('rejected'); }
       else { setError(json.message || 'Terjadi kesalahan di server.'); setStatus('idle'); }
     } catch {

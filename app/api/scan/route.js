@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { getSupabaseAdmin } from '@/lib/supabase';
@@ -33,6 +33,16 @@ function errorResponse(message, status) {
   return NextResponse.json({ success: false, message }, { status });
 }
 
+function isGeminiRateLimitError(error) {
+  const status = error?.status ?? error?.statusCode ?? error?.code ?? error?.error?.code;
+  return Number(status) === 429 || error?.error?.status === 'RESOURCE_EXHAUSTED';
+}
+
+function isStorageConflictError(error) {
+  const status = error?.status ?? error?.statusCode;
+  return Number(status) === 409 || error?.error === 'Duplicate';
+}
+
 async function removeUnrecordedPhoto(supabase, storagePath) {
   try {
     const { error } = await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
@@ -47,6 +57,7 @@ async function removeUnrecordedPhoto(supabase, storagePath) {
 export async function POST(request) {
   let supabase;
   let storagePath;
+  let storageUploaded = false;
   let actionSaved = false;
 
   try {
@@ -91,7 +102,7 @@ export async function POST(request) {
     try {
       const ai = new GoogleGenAI({ apiKey: geminiApiKey });
       response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash-lite',
         contents: [
           {
             role: 'user',
@@ -116,6 +127,9 @@ Jika tidak valid, set is_valid false dan jelaskan alasannya.`,
       });
     } catch (error) {
       logServerError('[api/scan] Gemini request failed', error);
+      if (isGeminiRateLimitError(error)) {
+        return errorResponse('Layanan analisis foto sedang mencapai batas kuota. Coba lagi nanti.', 429);
+      }
       return errorResponse('Layanan analisis foto sedang bermasalah. Coba lagi nanti.', 502);
     }
 
@@ -166,7 +180,8 @@ Jika tidak valid, set is_valid false dan jelaskan alasannya.`,
       return errorResponse('Hasil analisis foto tidak valid. Coba lagi.', 502);
     }
 
-    storagePath = `${randomUUID()}.${imageType.extension}`;
+    const imageHash = createHash('sha256').update(buffer).digest('hex');
+    storagePath = `${imageHash}.${imageType.extension}`;
     const { error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(storagePath, buffer, {
@@ -176,8 +191,12 @@ Jika tidak valid, set is_valid false dan jelaskan alasannya.`,
 
     if (uploadError) {
       logServerError('[api/scan] Supabase Storage upload failed', uploadError);
+      if (isStorageConflictError(uploadError)) {
+        return errorResponse('Foto ini sudah pernah digunakan. Silakan gunakan foto lain.', 409);
+      }
       return errorResponse('Foto berhasil dianalisis, tetapi gagal disimpan. Coba lagi.', 500);
     }
+    storageUploaded = true;
 
     const { data: publicUrlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath);
     const imageUrl = publicUrlData?.publicUrl;
@@ -214,7 +233,7 @@ Jika tidak valid, set is_valid false dan jelaskan alasannya.`,
     });
   } catch (error) {
     logServerError('[api/scan] Request processing failed', error);
-    if (storagePath && supabase && !actionSaved) {
+    if (storageUploaded && storagePath && supabase && !actionSaved) {
       await removeUnrecordedPhoto(supabase, storagePath);
     }
     const isConfigurationError = error instanceof Error && error.message.includes('must be configured');
