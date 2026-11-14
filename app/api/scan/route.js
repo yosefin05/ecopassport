@@ -157,7 +157,7 @@ Jangan mengembalikan nilai score atau carbon_saved. Poin dan estimasi karbon dih
       return NextResponse.json({
         success: false,
         is_valid: false,
-        message: reason || 'Foto tidak terdeteksi sebagai aksi ramah lingkungan.',
+        message: 'Foto ini belum sesuai dengan kriteria aktivitas ramah lingkungan. Silakan coba foto aksi hijau lainnya.',
         score: 0,
       });
     }
