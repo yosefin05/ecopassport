@@ -151,7 +151,7 @@ Base URL lokal: `http://localhost:3000`.
 |---|---|---|---|
 | POST | `/api/scan` | `multipart/form-data`: `image`, `user_name` | Validasi foto, analisis Gemini, simpan foto ke Storage, lalu simpan aksi dan poin melalui RPC |
 | GET | `/api/leaderboard` | — | Mengambil peringkat pengguna berdasarkan `green_points`; mengembalikan maksimal 10 data dan podium |
-| GET | `/api/user?name={nama}` | Query `name` | Mengambil poin pengguna dan riwayat aktivitasnya |
+| GET | `/api/user?name={nama}` | Query `name` (wajib, maksimal 24 karakter) | Mengambil poin pengguna dan riwayat aktivitasnya |
 
 #### Ringkasan Request dan Response
 
@@ -161,6 +161,11 @@ Base URL lokal: `http://localhost:3000`.
 - Field wajib: `image` (JPG/PNG/WEBP, maksimal 10 MB) dan `user_name` (maksimal 24 karakter).
 - Jika valid, respons memuat `success`, `action_category`, `category_label`, `score` (poin tetap dari backend), `carbon_saved` (benchmark backend), `carbon_method`, `carbon_note`, `action_title`, `message`, `image_url`, dan data log.
 - Jika foto tidak valid sebagai aksi hijau, respons memuat `success: false` dan `is_valid: false`.
+
+**GET `/api/user?name=...`**
+
+- `name` wajib diisi; nama kosong tidak diarahkan ke profil contoh.
+- Nama dipangkas spasi tepinya dan divalidasi konsisten dengan nama pada permintaan scan.
 
 **GET `/api/leaderboard`**
 
@@ -213,6 +218,8 @@ Database menggunakan Supabase PostgreSQL. Berdasarkan query pada kode aplikasi d
 RPC ini memperbarui atau membuat data pengguna, menambahkan poin, dan menyimpan catatan aksi dalam satu transaksi database. Eksekusi function dibatasi untuk role `service_role`.
 
 > **Catatan skema:** migration yang tersedia di repository mendefinisikan RPC `record_eco_action`, bukan keseluruhan DDL pembuatan tabel `users` dan `action_logs`. Nama kolom di atas didokumentasikan dari pemakaian aktual di kode dan RPC. Untuk instalasi database baru, schema dasar kedua tabel harus disediakan/diinisialisasi terlebih dahulu.
+
+RPC membatasi skor per aksi ke rentang 1–100. Aplikasi saat ini memberi 10 atau 15 poin deterministik berdasarkan kategori aksi yang telah divalidasi; nilai tersebut adalah poin gamifikasi, bukan ukuran dampak lingkungan.
 
 ### Supabase Storage
 
@@ -309,7 +316,7 @@ Poin 10/15 merupakan keputusan gamifikasi produk, bukan ukuran dampak lingkungan
 ## Catatan dan Batasan Implementasi
 
 - Identitas pengguna saat ini menggunakan nama yang disimpan di browser (`localStorage`), belum menggunakan sistem login atau autentikasi akun.
-- Nama pengguna dikirim dari frontend ke API; implementasi ini ditujukan untuk demonstrasi dan belum membuktikan kepemilikan identitas secara autentik.
+- Nama pengguna dikirim dari frontend ke API; validasi alias tidak membuktikan kepemilikan identitas. Pengguna dapat mengklaim nama orang lain, sehingga autentikasi diperlukan sebelum leaderboard atau poin digunakan untuk produksi.
 - Gemini hanya mengklasifikasikan bukti visual dan memberi deskripsi singkat. Poin tetap dan benchmark karbon ditentukan backend, bukan oleh AI. Estimasi karbon bersifat terbatas: satu kali penggunaan ulang botol 500 ml memakai benchmark 0,033 kg CO₂; kategori lain belum diberi angka karena foto saja tidak membuktikan jarak, berat material, jumlah penggunaan ulang, atau energi (kWh). Nilai tersebut bukan pengukuran langsung.
 - Hadiah dan kode klaim dibuat dari konfigurasi frontend. Repository saat ini belum menunjukkan endpoint backend untuk penukaran atau verifikasi hadiah.
 - Schema dasar tabel Supabase tidak disertakan sebagai migration pembuatan tabel pada repository ini; lihat catatan pada bagian Database Schema.

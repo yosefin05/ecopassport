@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logServerError } from '@/lib/server-errors';
+import { normalizeUserName } from '@/lib/user-name';
 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const userName = (searchParams.get('name') || 'Viska').trim();
-    if (!userName || userName.length > 24) {
+    const userName = normalizeUserName(searchParams.get('name'));
+    if (!userName) {
       return NextResponse.json(
         { success: false, message: 'Nama pengguna wajib diisi dan maksimal 24 karakter.' },
         { status: 400 }

@@ -4,6 +4,7 @@ import { GoogleGenAI } from '@google/genai';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logServerError } from '@/lib/server-errors';
 import { ECO_ACTION_BENCHMARKS } from '@/lib/eco-benchmarks';
+import { normalizeUserName } from '@/lib/user-name';
 
 export const runtime = 'nodejs';
 
@@ -67,15 +68,14 @@ export async function POST(request) {
 
     const formData = await request.formData();
     const file = formData.get('image');
-    const userNameValue = formData.get('user_name');
-    const userName = typeof userNameValue === 'string' ? userNameValue.trim() : '';
+    const userName = normalizeUserName(formData.get('user_name'));
 
     if (!file || typeof file.arrayBuffer !== 'function') {
       return errorResponse('Foto aksi ramah lingkungan wajib diunggah.', 400);
     }
     if (file.size === 0) return errorResponse('File foto kosong. Pilih foto lain.', 400);
     if (file.size > MAX_FILE_SIZE) return errorResponse('Ukuran foto maksimal 10 MB.', 413);
-    if (!userName || userName.length > 24 || /[\u0000-\u001f\u007f]/.test(userName)) {
+    if (!userName) {
       return errorResponse('Nama pengguna wajib diisi dan maksimal 24 karakter.', 400);
     }
 
@@ -157,7 +157,7 @@ Jangan mengembalikan nilai score atau carbon_saved. Poin dan estimasi karbon dih
       return NextResponse.json({
         success: false,
         is_valid: false,
-        message: reason || 'Foto tidak terdeteksi sebagai aksi ramah lingkungan.',
+        message: 'Foto ini belum sesuai dengan kriteria aktivitas ramah lingkungan. Silakan coba foto aksi hijau lainnya.',
         score: 0,
       });
     }
