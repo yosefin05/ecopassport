@@ -52,7 +52,7 @@ export default function ProfilePage() {
   const badges = getBadges({ points, actions: logs.length, carbon, streak, best });
   const stats = [
     ['Poin hijau', points, 'lime', LeafIcon],
-    ['Karbon dihemat', `${carbon.toFixed(2)} kg`, 'sky', Cloud],
+    ['Estimasi karbon', `${carbon.toFixed(3)} kg`, 'sky', Cloud],
     ['Total aksi', logs.length, 'pink', Camera],
     ['Streak harian', `${streak} hari`, 'sun', Flame],
   ];
@@ -117,7 +117,7 @@ export default function ProfilePage() {
                 <Stamp value={l.score} size={96} rotate={[-9, 7, -4, 11][i % 4]} />
                 <p className="mt-2 w-full truncate text-sm font-extrabold">{l.action_title}</p>
                 <p className="text-xs font-bold text-[var(--muted)]">{formatDate(l.created_at)}</p>
-                <p className="text-xs font-extrabold text-[var(--ink)]">{Number(l.carbon_saved || 0).toFixed(2)} kg CO₂</p>
+                <p className="text-xs font-extrabold text-[var(--ink)]">{Number(l.carbon_saved || 0).toFixed(3)} kg CO₂</p>
               </div>
             ))}
           </div>

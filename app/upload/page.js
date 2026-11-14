@@ -148,17 +148,19 @@ export default function UploadPage() {
               <Stamp title="Terverifikasi" value={`+${result.score}`} sub="poin hijau" size={190} animate />
             </div>
             <div className="p-6 text-center">
+              <p className="mb-2 text-sm font-extrabold uppercase tracking-wide text-[var(--muted)]">{result.category_label}</p>
               <h2 className="font-display text-3xl font-bold">{result.action_title}</h2>
               <p className="mx-auto mt-2 max-w-md text-[var(--muted)]">{result.message}</p>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border-[2.5px] border-[var(--ink)] bg-[var(--pink)] p-4 text-left">
-                  <p className="flex items-center gap-1 text-sm font-extrabold"><Cloud size={16} /> Karbon dihemat</p>
-                  <p className="font-display text-3xl font-bold">{carbon.toFixed(2)} kg</p>
+                  <p className="flex items-center gap-1 text-sm font-extrabold"><Cloud size={16} /> Estimasi karbon</p>
+                  <p className="font-display text-3xl font-bold">{carbon.toFixed(3)} kg</p>
+                  <p className="mt-1 text-xs leading-relaxed">{result.carbon_note}</p>
                 </div>
-                <div className="rounded-2xl border-[2.5px] border-[var(--ink)] bg-[var(--sky)] p-4 text-left">
+                {carbon > 0 && <div className="rounded-2xl border-[2.5px] border-[var(--ink)] bg-[var(--sky)] p-4 text-left">
                   <p className="flex items-center gap-1 text-sm font-extrabold"><Car size={16} /> Setara kira-kira</p>
                   <p className="font-display text-3xl font-bold">{kmEquivalent(carbon)} km</p>
-                </div>
+                </div>}
               </div>
               <div className="mt-6 flex flex-wrap justify-center gap-3">
                 <button onClick={reset} className="btn btn-ink"><Camera size={20} /> Scan aksi lain</button>
