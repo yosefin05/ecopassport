@@ -53,7 +53,7 @@ const STEPS = [
     icon: ScanSearch,
     color: 'sky',
     title: 'AI memeriksa',
-    text: 'Gemini memastikan aksinya nyata, lalu menghitung karbon yang kamu hemat.',
+    text: 'Gemini mengenali aksi dari foto. Backend memberi poin tetap dan estimasi karbon berbasis benchmark.',
   },
   {
     icon: StampIcon,
@@ -146,8 +146,8 @@ export default function Home() {
           <Squiggle className="mt-3 h-3 w-40" />
 
           <p className="mt-5 max-w-md text-lg text-[var(--muted)]">
-            Foto aksi ramah lingkunganmu. AI memeriksanya, menghitung karbon
-            yang kamu hemat, dan kamu naik peringkat.
+            Foto aksi ramah lingkunganmu. AI mengenali aksinya, backend menghitung poin
+            dan estimasi karbon berbasis benchmark, lalu kamu naik peringkat.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-4">
@@ -186,7 +186,7 @@ export default function Home() {
             <div className="ruled relative mt-3 h-[calc(100%-2.6rem)] overflow-hidden rounded-xl border-2 border-dashed border-[var(--ink)]/40">
               <Stamp
                 title="Tumbler"
-                value="+80"
+                value="+10"
                 sub="Tumbler"
                 size={78}
                 rotate={10}
@@ -195,7 +195,7 @@ export default function Home() {
 
               <Stamp
                 title="Sepeda"
-                value="+92"
+                value="+15"
                 sub="Sepeda"
                 size={78}
                 rotate={-14}
@@ -205,7 +205,7 @@ export default function Home() {
               <div className="absolute inset-0 grid place-items-center pt-14">
                 <Stamp
                   title="Terverifikasi"
-                  value="+85"
+                  value="+10"
                   sub="poin hijau"
                   size={150}
                   animate

@@ -40,8 +40,8 @@ EcoPassport AI menggabungkan antarmuka web, Google Gemini, dan Supabase. Hasil a
 ## Fitur Utama
 
 - **AI Scan Eco Action** — unggah foto JPG, PNG, atau WEBP untuk dianalisis oleh Google Gemini.
-- **Green Points** — aksi yang dinyatakan valid memperoleh skor/poin dari hasil analisis.
-- **Estimasi Penghematan Karbon** — menampilkan estimasi karbon yang dihemat berdasarkan respons AI.
+- **Green Points** — aksi valid memperoleh poin tetap berdasarkan kategori yang ditentukan backend; Gemini tidak menentukan poin.
+- **Estimasi Penghematan Karbon** — menggunakan benchmark kategori yang ditentukan backend. Nilai hanya ditampilkan jika asumsi yang tersedia mendukung estimasi; kategori tanpa data kuantitatif yang cukup ditampilkan 0 kg disertai alasan.
 - **Paspor dan Riwayat Aksi** — menampilkan total poin, riwayat cap, level, streak, dan lencana.
 - **Leaderboard** — menampilkan 10 pengguna dengan poin tertinggi serta podium tiga peringkat teratas.
 - **Rewards** — menampilkan hadiah berdasarkan ambang poin dan kode klaim yang dibuat di sisi aplikasi.
@@ -92,11 +92,12 @@ flowchart TD
     D -->|Valid| F[Kirim gambar ke Google Gemini]
     F --> G{Aksi ramah lingkungan valid?}
     G -->|Tidak| H[Respons penolakan<br/>tanpa menambah poin]
-    G -->|Ya| I[Validasi struktur dan rentang hasil AI]
-    I --> J[Upload foto ke Supabase Storage]
-    J --> K[record_eco_action RPC]
-    K --> L[Perbarui poin dan simpan action log]
-    L --> M[Respons hasil scan ke frontend]
+    G -->|Ya| I[Validasi kategori dan deskripsi AI]
+    I --> J[Backend menentukan poin tetap dan benchmark karbon]
+    J --> K[Upload foto ke Supabase Storage]
+    K --> L[record_eco_action RPC]
+    L --> M[Perbarui poin dan simpan action log]
+    M --> N[Respons hasil scan ke frontend]
 ```
 
 ### Alur Data Halaman
@@ -158,7 +159,7 @@ Base URL lokal: `http://localhost:3000`.
 
 - Content type: `multipart/form-data`.
 - Field wajib: `image` (JPG/PNG/WEBP, maksimal 10 MB) dan `user_name` (maksimal 24 karakter).
-- Jika valid, respons memuat `success`, `score`, `carbon_saved`, `action_title`, `message`, `image_url`, dan data log.
+- Jika valid, respons memuat `success`, `action_category`, `category_label`, `score` (poin tetap dari backend), `carbon_saved` (benchmark backend), `carbon_method`, `carbon_note`, `action_title`, `message`, `image_url`, dan data log.
 - Jika foto tidak valid sebagai aksi hijau, respons memuat `success: false` dan `is_valid: false`.
 
 **GET `/api/leaderboard`**
@@ -293,11 +294,23 @@ Lihat [.env.example](.env.example) untuk template variabel. Semua variabel di ba
 
 **Penting:** `SUPABASE_SERVICE_ROLE_KEY` adalah rahasia server. Jangan menambahkan prefix `NEXT_PUBLIC_`, jangan menggunakannya di komponen client, dan jangan pernah mengunggah nilai aslinya ke repository publik.
 
+## Benchmark dan Transparansi Perhitungan
+
+| Kategori | Poin tetap | Benchmark karbon | Catatan |
+|---|---:|---:|---|
+| Botol pakai ulang | 10 | 0,033 kg CO₂ | Asumsi satu kali penggunaan ulang botol 500 ml |
+| Pemilahan sampah | 15 | 0 kg | Foto tidak menunjukkan jenis/berat material dan proses pengolahan |
+| Bersepeda | 15 | 0 kg | Foto tidak membuktikan jarak atau kendaraan yang digantikan |
+| Tas pakai ulang | 10 | 0 kg | Manfaat bergantung pada jenis tas dan jumlah pemakaian ulang |
+| Hemat energi | 10 | 0 kg | Foto tidak menunjukkan energi yang dihemat dalam kWh |
+
+Poin 10/15 merupakan keputusan gamifikasi produk, bukan ukuran dampak lingkungan. Benchmark botol mengacu pada estimasi penghematan 0,033 kg CO₂ untuk satu kali penggunaan ulang botol PET 500 ml pada studi *Making the Environmental Case for Reusable PET Bottles* oleh Hamade, Hadchiti, dan Ammouri, *Procedia Manufacturing* 43 (2020), hlm. 201–207, DOI: 10.1016/j.promfg.2020.02.137. Nilai ini merupakan acuan ilustratif dari studi tersebut dan tidak mewakili semua jenis/material botol. Sumber: https://www.sciencedirect.com/science/article/pii/S2351978920307174.
+
 ## Catatan dan Batasan Implementasi
 
 - Identitas pengguna saat ini menggunakan nama yang disimpan di browser (`localStorage`), belum menggunakan sistem login atau autentikasi akun.
 - Nama pengguna dikirim dari frontend ke API; implementasi ini ditujukan untuk demonstrasi dan belum membuktikan kepemilikan identitas secara autentik.
-- Estimasi karbon dan skor berasal dari respons AI yang divalidasi format serta rentang nilainya; hasilnya merupakan estimasi, bukan pengukuran lingkungan secara langsung.
+- Gemini hanya mengklasifikasikan bukti visual dan memberi deskripsi singkat. Poin tetap dan benchmark karbon ditentukan backend, bukan oleh AI. Estimasi karbon bersifat terbatas: satu kali penggunaan ulang botol 500 ml memakai benchmark 0,033 kg CO₂; kategori lain belum diberi angka karena foto saja tidak membuktikan jarak, berat material, jumlah penggunaan ulang, atau energi (kWh). Nilai tersebut bukan pengukuran langsung.
 - Hadiah dan kode klaim dibuat dari konfigurasi frontend. Repository saat ini belum menunjukkan endpoint backend untuk penukaran atau verifikasi hadiah.
 - Schema dasar tabel Supabase tidak disertakan sebagai migration pembuatan tabel pada repository ini; lihat catatan pada bagian Database Schema.
 
